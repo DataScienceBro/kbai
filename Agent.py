@@ -13,6 +13,9 @@ from PIL import Image
 import ImageHelper
 
 
+AGENT_ANSWER_THRESHOLD = 0
+
+
 class Agent:
     # The default constructor for your Agent. Make sure to execute any
     # processing necessary before your Agent starts solving problems here.
@@ -33,60 +36,31 @@ class Agent:
             else:
                 self.input_figures[name] = (figure, figure_image, binary_image)
 
-    def solve2x2(self):
-
-        # If A:B is unchanged, find the option that's the same as 'C'
-        print 'Checking for unchanged'
+    def check_unchanged(self, image1, image2, image3):
         if ImageHelper.get_similarity_ratio(
-                self.input_figures['A'][2],
-                self.input_figures['B'][2]) > \
-                ImageHelper.HIGH_SIMILARITY_THRESHOLD:
-
+                image1, image2) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
             max_option_index = None
             max_option_score = 0
             for index, (option, optionImage, binary_image) in self.options.iteritems():
                 option_score = ImageHelper.get_similarity_ratio(
-                    self.input_figures['C'][2], binary_image
+                    image3, binary_image
                 )
                 if not max_option_score or option_score > max_option_score:
                     max_option_index = index
                     max_option_score = option_score
-
             if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
                 return int(max_option_index)
+        return -1
 
-        # If A:C is unchanged, find the option that's the same as 'B'
-        if ImageHelper.get_similarity_ratio(
-                self.input_figures['A'][2],
-                self.input_figures['C'][2]) > \
-                ImageHelper.HIGH_SIMILARITY_THRESHOLD:
-            max_option_index = None
-            max_option_score = 0
-            for index, \
-                (option, optionImage, binary_image) in self.options.iteritems():
-                option_score = ImageHelper.get_similarity_ratio(
-                    self.input_figures['B'][2], binary_image
-                )
-                if not max_option_score or option_score > max_option_score:
-                    max_option_index = index
-                    max_option_score = option_score
-
-            if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
-                return int(max_option_index)
-
-        print 'Checking for reflection'
-        # If A:B is a reflection, find the option that's the same reflection
-        # of 'C'
-        axis = ImageHelper.get_reflection_axis(self.input_figures['A'][2],
-                                               self.input_figures['B'][2])
+    def check_reflection(self, image1, image2, image3):
+        axis = ImageHelper.get_reflection_axis(image1, image2)
 
         if axis:
             max_option_index = None
             max_option_score = 0
             for index, (option, optionImage, binary_image) in self.options.iteritems():
-                # Get all scores for this axis
                 option_score = ImageHelper.reflect_and_score(
-                    axis, self.input_figures['C'][2], binary_image)
+                    axis, image3, binary_image)
 
                 if not max_option_score or option_score > max_option_score:
                     max_option_index = index
@@ -94,89 +68,112 @@ class Agent:
 
             if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
                 return int(max_option_index)
+        return -1
 
-        # If A:C is a reflection, find the option that's the same reflection
-        # of 'B'
-        axis = ImageHelper.get_reflection_axis(self.input_figures['A'][2],
-                                                 self.input_figures['C'][2])
-
-        if axis:
-            max_option_index = None
-            max_option_score = 0
-            for index, (option, optionImage, binary_image) in self.options.iteritems():
-                # Get all scores for this axis
-                option_score = ImageHelper.reflect_and_score(
-                    axis, self.input_figures['B'][2], binary_image)
-
-                if not max_option_score or option_score > max_option_score:
-                    max_option_index = index
-                    max_option_score = option_score
-
-            if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
-                return int(max_option_index)
-
-        print 'Checking for rotation'
-        # If A:B is a rotation, find the option that's the same angle
-        # rotation of 'C'
-        angle = ImageHelper.get_rotation_degrees(self.input_figures['A'][2],
-                                                 self.input_figures['B'][2])
+    def check_rotation(self, image1, image2, image3):
+        angle = ImageHelper.get_rotation_degrees(image1, image2)
         if angle >= 0:
             max_option_index = None
             max_option_score = 0
             for index, (option, optionImage, binary_image) in self.options.iteritems():
                 option_score = ImageHelper.rotate_and_score(
-                    angle, self.input_figures['C'][2], binary_image)
+                    angle, image3, binary_image)
                 if not max_option_score or option_score > max_option_score:
                     max_option_index = index
                     max_option_score = option_score
             if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
                 return int(max_option_index)
+        return -1
 
-        # If A:C is a rotation, find the option that's the same angle
-        # rotation of 'B'
-        angle = ImageHelper.get_rotation_degrees(self.input_figures['A'][2],
-                                                  self.input_figures['C'][2])
-        if angle >= 0:
-            max_option_index = None
-            max_option_score = 0
-            for index, (option, optionImage, binary_image) in self.options.iteritems():
-                option_score = ImageHelper.rotate_and_score(
-                    angle, self.input_figures['B'][2], binary_image)
-                if not max_option_score or option_score > max_option_score:
-                    max_option_index = index
-                    max_option_score = option_score
-            if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
-                return int(max_option_index)
-
-        print 'Checking for subtraction'
-        # Check for: if B = A - x, then D = C - x
-        # Find x (x = A - B)
-        difference_a_b = ImageHelper.find_difference(self.input_figures['A'][2],
-                                                     self.input_figures['B'][2])
+    def check_subtraction(self, image1, image2, image3):
+        difference_a_b = ImageHelper.find_difference(image1, image2)
         max_subtraction_score = None
         max_subtraction_index = -1
         for index, (option, optionImage, binary_image) in self.options.iteritems():
             subtraction_score = ImageHelper.get_difference_score(
-                difference_a_b, self.input_figures['C'][2], binary_image)
-            if not max_subtraction_score or subtraction_score > max_subtraction_score:
+                difference_a_b, image3, binary_image)
+            if not max_subtraction_score or subtraction_score > \
+                    max_subtraction_score:
                 max_subtraction_score = subtraction_score
                 max_subtraction_index = index
         if max_subtraction_score > ImageHelper.LOW_SIMILARITY_THRESHOLD:
             return int(max_subtraction_index)
+        return -1
 
-        # Check for: if C = A - x, then D = B - x
-        difference_a_c = ImageHelper.find_difference(self.input_figures['A'][2],
-                                                     self.input_figures['C'][2])
-        max_subtraction_score = None
-        max_subtraction_index = -1
-        for index, (option, optionImage, binary_image) in self.options.iteritems():
-            subtraction_score = ImageHelper.get_difference_score(
-                difference_a_c, self.input_figures['B'][2], binary_image)
-            if not max_subtraction_score or subtraction_score > max_subtraction_score:
-                max_subtraction_score = subtraction_score
-                max_subtraction_index = index
-        if max_subtraction_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
-            return int(max_subtraction_index)
+    def solve2x2(self):
+
+        # If A:B is unchanged, find the option that's the same as 'C'
+        print 'Checking for unchanged'
+        unchanged_a_b_score = self.check_unchanged(
+            self.input_figures['A'][2],
+            self.input_figures['B'][2],
+            self.input_figures['C'][2])
+        if unchanged_a_b_score > AGENT_ANSWER_THRESHOLD:
+            return unchanged_a_b_score
+
+        unchanged_a_c_score = self.check_unchanged(
+            self.input_figures['A'][2],
+            self.input_figures['C'][2],
+            self.input_figures['B'][2])
+        if unchanged_a_b_score > AGENT_ANSWER_THRESHOLD:
+            return unchanged_a_c_score
+
+        print 'Checking for reflection'
+        # If A:B is a reflection, find the option that's the same reflection
+        # of 'C'
+        reflection_a_b_score = self.check_reflection(
+            self.input_figures['A'][2],
+            self.input_figures['B'][2],
+            self.input_figures['C'][2]
+        )
+        if reflection_a_b_score > AGENT_ANSWER_THRESHOLD:
+            return reflection_a_b_score
+
+        reflection_a_c_score = self.check_reflection(
+            self.input_figures['A'][2],
+            self.input_figures['C'][2],
+            self.input_figures['B'][2]
+        )
+        if reflection_a_c_score > AGENT_ANSWER_THRESHOLD:
+            return reflection_a_c_score
+
+        print 'Checking for rotation'
+        # If A:B is a rotation, find the option that's the same angle
+        # rotation of 'C'
+        rotation_a_b_score = self.check_rotation(
+            self.input_figures['A'][2],
+            self.input_figures['B'][2],
+            self.input_figures['C'][2]
+        )
+        if rotation_a_b_score > AGENT_ANSWER_THRESHOLD:
+            return rotation_a_b_score
+
+        rotation_a_c_score = self.check_rotation(
+            self.input_figures['A'][2],
+            self.input_figures['C'][2],
+            self.input_figures['B'][2]
+        )
+        if rotation_a_c_score > AGENT_ANSWER_THRESHOLD:
+            return rotation_a_c_score
+
+        print 'Checking for subtraction'
+        # Check for: if B = A - x, then D = C - x
+        # Find x (x = A - B)
+        subtraction_a_b_score = self.check_subtraction(
+            self.input_figures['A'][2],
+            self.input_figures['B'][2],
+            self.input_figures['C'][2]
+        )
+        if subtraction_a_b_score > AGENT_ANSWER_THRESHOLD:
+            return subtraction_a_b_score
+
+        subtraction_a_c_score = self.check_subtraction(
+            self.input_figures['A'][2],
+            self.input_figures['C'][2],
+            self.input_figures['B'][2]
+        )
+        if subtraction_a_c_score > AGENT_ANSWER_THRESHOLD:
+            return subtraction_a_c_score
 
         print 'Checking for fill:unfilled'
         # Check if A:B or A:C is filled:unfilled or vice versa
