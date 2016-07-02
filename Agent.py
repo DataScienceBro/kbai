@@ -10,6 +10,7 @@
 
 # Install Pillow and uncomment this line to access image processing.
 from PIL import Image
+import numpy
 import ImageHelper
 
 
@@ -26,91 +27,106 @@ class Agent:
 
     def store_inputs(self, problem):
         for name, figure in problem.figures.iteritems():
-            figure_image = Image.open(figure.visualFilename)
+            figure_image = Image.open(figure.visualFilename).convert("L")
+            binary_image = ImageHelper.get_binary_image(figure_image)
             if name.isdigit():
-                self.options[name] = (figure, figure_image)
+                self.options[name] = (figure, figure_image, binary_image)
             else:
-                self.input_figures[name] = (figure, figure_image)
+                self.input_figures[name] = (figure, figure_image, binary_image)
 
     def solve2x2(self):
 
         # If A:B is unchanged, find the option that's the same as 'C'
-        if ImageHelper.get_mse(
-                self.input_figures['A'][1], self.input_figures['B'][1]) \
-                < ImageHelper.MSE_SIMILARITY_THRESHOLD:
-            for index, (option, optionImage) in self.options.iteritems():
-                if ImageHelper.get_mse(
-                        self.input_figures['C'][1], optionImage) \
-                        < ImageHelper.MSE_SIMILARITY_THRESHOLD:
+        print 'Checking for unchanged'
+        if ImageHelper.get_similarity_ratio(
+                self.input_figures['A'][2],
+                self.input_figures['B'][2]) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
+            for index, (option, optionImage, binary_image) in self.options.iteritems():
+                if ImageHelper.get_similarity_ratio(
+                    self.input_figures['C'][2], binary_image
+                ) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
                     return int(index)
 
         # If A:C is unchanged, find the option that's the same as 'B'
-        if ImageHelper.get_mse(
-                self.input_figures['A'][1], self.input_figures['C'][1]) \
-                < ImageHelper.MSE_SIMILARITY_THRESHOLD:
-            for index, (option, optionImage) in self.options.iteritems():
-                if ImageHelper.get_mse(
-                        self.input_figures['B'][1], optionImage) \
-                        < ImageHelper.MSE_SIMILARITY_THRESHOLD:
+        if ImageHelper.get_similarity_ratio(
+                self.input_figures['A'][2],
+                self.input_figures['C'][2]) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
+            for index, (option, optionImage, binary_image) in self.options.iteritems():
+                if ImageHelper.get_similarity_ratio(
+                    self.input_figures['B'][2], binary_image
+                ) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
                     return int(index)
 
+        print 'Checking for reflection'
         # If A:B is a reflection, find the option that's the same reflection
         # of 'C'
-        axis = ImageHelper.get_reflection_axis(self.input_figures['A'][1],
-                                               self.input_figures['B'][1])
+        axis = ImageHelper.get_reflection_axis(self.input_figures['A'][2],
+                                                 self.input_figures['B'][2])
+
         if axis:
-            for index, (option, optionImage) in self.options.iteritems():
-                if ImageHelper.get_reflection_axis(self.input_figures['C'][1],
-                                                   optionImage) == axis:
-                    #print 'Found using reflection'
+            for index, (option, optionImage, binary_image) in self.options.iteritems():
+                if ImageHelper.get_reflection_axis(
+                        self.input_figures['C'][2], binary_image) == axis:
                     return int(index)
 
         # If A:C is a reflection, find the option that's the same reflection
         # of 'B'
-        axis = ImageHelper.get_reflection_axis(self.input_figures['A'][1],
-                                               self.input_figures['C'][1])
+        axis = ImageHelper.get_reflection_axis(self.input_figures['A'][2],
+                                                 self.input_figures['C'][2])
+
         if axis:
-            for index, (option, optionImage) in self.options.iteritems():
-                if ImageHelper.get_reflection_axis(self.input_figures['B'][1],
-                                                   optionImage) == axis:
+            for index, (option, optionImage, binary_image) in self.options.iteritems():
+                if ImageHelper.get_reflection_axis(
+                        self.input_figures['B'][2], binary_image) == axis:
                     return int(index)
 
+        print 'Checking for rotation'
         # If A:B is a rotation, find the option that's the same angle
         # rotation of 'C'
-        angle = ImageHelper.get_rotation_degrees(self.input_figures['A'][1],
-                                                 self.input_figures['B'][1])
+        angle = ImageHelper.get_rotation_degrees(self.input_figures['A'][2],
+                                                  self.input_figures['B'][2])
         if angle >= 0:
-            for index, (option, optionImage) in self.options.iteritems():
-                if ImageHelper.get_rotation_degrees(self.input_figures['C'][1],
-                                                    optionImage) == angle:
+            for index, (option, optionImage, binary_image) in self.options.iteritems():
+                if ImageHelper.get_rotation_degrees(self.input_figures['C'][2],
+                                                     binary_image) == angle:
                     return int(index)
 
         # If A:C is a rotation, find the option that's the same angle
         # rotation of 'B'
-        angle = ImageHelper.get_rotation_degrees(self.input_figures['A'][1],
-                                                 self.input_figures['C'][1])
+        angle = ImageHelper.get_rotation_degrees(self.input_figures['A'][2],
+                                                  self.input_figures['C'][2])
         if angle >= 0:
-            for index, (option, optionImage) in self.options.iteritems():
-                if ImageHelper.get_rotation_degrees(self.input_figures['B'][1],
-                                                    optionImage) == angle:
+            for index, (option, optionImage, binary_image) in self.options.iteritems():
+                if ImageHelper.get_rotation_degrees(self.input_figures['B'][2],
+                                                     binary_image) == angle:
                     return int(index)
 
-        # If A:B has a fill's complement relationship, find the fill's
-        # complement of C
-        #fills_complement = ImageHelper.check_fills_complement(
-        #    self.input_figures['A'][1], self.input_figures['B'][1])
-        #if fills_complement != 0:
-        #    best_option = None
-        #    lowest_difference = float("inf")
-        #    for index, (option, optionImage) in self.options.iteritems():
-        #        current_complement = ImageHelper.check_fills_complement(
-        #            self.input_figures['C'][1], optionImage)
-        #        if abs(current_complement - fills_complement) < lowest_difference:
-        #            lowest_difference = abs(current_complement - fills_complement)
-        #            best_option = index
-        #    if best_option:
-        #        return int(best_option)
+        print 'Checking for subtraction'
+        # Check for: if B = A - x, then D = C - x
+        # Find x (x = A - B)
+        difference_a_b = ImageHelper.find_difference(self.input_figures['A'][2],
+                                                     self.input_figures['B'][2])
+        for index, (option, optionImage, binary_image) in self.options.iteritems():
+            difference_c_option = ImageHelper.find_difference(self.input_figures['C'][2],
+                                                              binary_image)
+            if ImageHelper.get_similarity_ratio(
+                    difference_a_b, difference_c_option) \
+                    > ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(index)
 
+        # Check for: if C = A - x, then D = B - x
+        difference_a_c = ImageHelper.find_difference(self.input_figures['A'][2],
+                                                     self.input_figures['C'][2])
+        for index, (option, optionImage, binary_image) in self.options.iteritems():
+            difference_b_option = ImageHelper.find_difference(self.input_figures['B'][2],
+                                                              binary_image)
+            if ImageHelper.get_similarity_ratio(
+                    difference_a_c, difference_b_option) \
+                    > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
+                return int(index)
+
+        print 'Checking for fill:unfilled'
+        # Check if A:B or A:C is filled:unfilled or vice versa
         best_ratio = None
         best_option_index = None
         best_option_image = None
@@ -118,7 +134,7 @@ class Agent:
                                                      self.input_figures['B'][1])
         bw_ratio_AC = ImageHelper.get_black_white_ratio(self.input_figures['A'][1],
                                                      self.input_figures['C'][1])
-        for index, (option, optionImage) in self.options.iteritems():
+        for index, (option, optionImage, binary_image) in self.options.iteritems():
             current_ratio = ImageHelper.get_black_white_ratio(
                 self.input_figures['C'][1], optionImage)
             if not best_ratio:

@@ -5,6 +5,33 @@ MSE_SIMILARITY_THRESHOLD = 2000
 PERCENT_DIFF_THRESHOLD = 3.25
 FILL_RATIO_DIFF_THRESHOLD = 0.25
 FILL_RATIO_DIFF_MIN_THRESHOLD = 0.05
+LOW_SIMILARITY_THRESHOLD = 0.95
+HIGH_SIMILARITY_THRESHOLD = 0.98
+
+
+def get_binary_image(image):
+        image_map = numpy.array(image, dtype=numpy.uint8)
+
+        for i in xrange(image_map.shape[0]):
+            for j in xrange(image_map.shape[1]):
+                image_map[i][j] /= 255
+        return image_map
+
+
+# Assumes the two images are the same shape
+def get_similarity_ratio(binary_img1, binary_img2):
+    rows = binary_img1.shape[0]
+    columns = binary_img1.shape[1]
+
+    difference_matrix = numpy.zeros((rows, columns), dtype=float)
+    for i in xrange(rows):
+        for j in xrange(columns):
+            # use float to prevent overflow in case of negatives
+            difference_matrix[i][j] = \
+                abs(float(binary_img1[i][j]) - float(binary_img2[i][j]))
+
+    difference_ratio = numpy.sum(difference_matrix) / float(rows * columns)
+    return 1 - difference_ratio
 
 
 def get_mse(figure1, figure2):
@@ -46,25 +73,21 @@ def get_black_white_ratio(figure1, figure2):
 
 
 # Returns angle of rotation if the images are rotations. Else -1.
-def get_rotation_degrees(figure1, figure2):
-    figure1_arr = numpy.array(figure1)
-    figure2_arr = numpy.array(figure2)
+def get_rotation_degrees(binary_image1, binary_image2):
     for k in xrange(4):
-        if get_mse(numpy.rot90(figure1_arr, k), figure2_arr) \
-                < MSE_SIMILARITY_THRESHOLD:
+        if get_similarity_ratio(numpy.rot90(binary_image1, k), binary_image2) \
+                > LOW_SIMILARITY_THRESHOLD:
             return 90 * k
     return -1
 
 
 # Returns axis of reflection (x or y) if the images are reflections. Else False.
-def get_reflection_axis(figure1, figure2):
-    figure1_arr = numpy.array(figure1)
-    figure2_arr = numpy.array(figure2)
-    if get_mse(numpy.fliplr(figure1_arr), figure2_arr) \
-            < MSE_SIMILARITY_THRESHOLD:
+def get_reflection_axis(binary_image1, binary_image2):
+    if get_similarity_ratio(numpy.fliplr(binary_image1), binary_image2) \
+            > HIGH_SIMILARITY_THRESHOLD:
         return 'y'
-    if get_mse(numpy.flipud(figure1_arr), figure2_arr) \
-            < MSE_SIMILARITY_THRESHOLD:
+    if get_similarity_ratio(numpy.flipud(binary_image1), binary_image2) \
+            > HIGH_SIMILARITY_THRESHOLD:
         return 'x'
     return False
 
@@ -111,3 +134,15 @@ def check_fills_complement(figure1, figure2):
         return -percent_diff
 
     return 0
+
+
+def find_difference(figure1, figure2):
+    rows = figure1.shape[0]
+    columns = figure2.shape[1]
+
+    difference_matrix = numpy.zeros((rows, columns), dtype=float)
+
+    for i in xrange(rows):
+        for j in xrange(columns):
+            difference_matrix[i][j] = abs(float(figure1[i][j]) - float(figure2[i][j]))
+    return difference_matrix
