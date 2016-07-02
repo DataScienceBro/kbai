@@ -7,6 +7,8 @@ FILL_RATIO_DIFF_THRESHOLD = 0.25
 FILL_RATIO_DIFF_MIN_THRESHOLD = 0.05
 LOW_SIMILARITY_THRESHOLD = 0.95
 HIGH_SIMILARITY_THRESHOLD = 0.98
+HIGH_SIMILARITY_THRESHOLD_3x3 = 0.90
+PIXEL_RATIO_THRESHOLD = 0.95
 
 
 def get_binary_image(image):
@@ -173,3 +175,9 @@ def find_difference(figure1, figure2):
 def get_difference_score(difference_matrix, figure1, figure2):
     difference_1_2 = find_difference(figure1, figure2)
     return get_similarity_ratio(difference_matrix, difference_1_2)
+
+
+def get_pixel_ratio(figure1, figure2):
+    sum1 = numpy.sum(figure1)
+    sum2 = numpy.sum(figure2)
+    return float(sum1) / sum2
