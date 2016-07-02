@@ -76,9 +76,17 @@ def get_black_white_ratio(figure1, figure2):
 def get_rotation_degrees(binary_image1, binary_image2):
     for k in xrange(4):
         if get_similarity_ratio(numpy.rot90(binary_image1, k), binary_image2) \
-                > LOW_SIMILARITY_THRESHOLD:
+                > HIGH_SIMILARITY_THRESHOLD:
             return 90 * k
     return -1
+
+
+# Rotates figure1 and measures similarity of result against figure2
+def rotate_and_score(angle, figure1, figure2):
+    k = angle / 90
+    return get_similarity_ratio(
+        numpy.rot90(figure1, k), figure2
+    )
 
 
 # Returns axis of reflection (x or y) if the images are reflections. Else False.
@@ -90,6 +98,20 @@ def get_reflection_axis(binary_image1, binary_image2):
             > HIGH_SIMILARITY_THRESHOLD:
         return 'x'
     return False
+
+
+# Reflects figure1 and measures similarity of result against figure2
+def reflect_and_score(axis, figure1, figure2):
+    if axis == 'y':
+        return get_similarity_ratio(
+            numpy.fliplr(figure1),
+            figure2
+        )
+    else:
+        return get_similarity_ratio(
+            numpy.flipud(figure1),
+            figure2
+        )
 
 
 def get_bw_image(figure):
@@ -146,3 +168,8 @@ def find_difference(figure1, figure2):
         for j in xrange(columns):
             difference_matrix[i][j] = abs(float(figure1[i][j]) - float(figure2[i][j]))
     return difference_matrix
+
+
+def get_difference_score(difference_matrix, figure1, figure2):
+    difference_1_2 = find_difference(figure1, figure2)
+    return get_similarity_ratio(difference_matrix, difference_1_2)
