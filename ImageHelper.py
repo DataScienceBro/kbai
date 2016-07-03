@@ -1,4 +1,5 @@
 import numpy
+#from matplotlib import pyplot
 
 
 MSE_SIMILARITY_THRESHOLD = 2000
@@ -9,6 +10,7 @@ LOW_SIMILARITY_THRESHOLD = 0.95
 HIGH_SIMILARITY_THRESHOLD = 0.98
 HIGH_SIMILARITY_THRESHOLD_3x3 = 0.90
 PIXEL_RATIO_THRESHOLD = 0.95
+TRANSLATION_THRESHOLD = 0.90
 
 
 def get_binary_image(image):
@@ -146,15 +148,13 @@ def check_fills_complement(figure1, figure2):
 
     percent_diff = get_percent_diff(difference21, figure2_bw)
     if percent_diff < PERCENT_DIFF_THRESHOLD and \
-                    get_percent_diff(
-                            numpy.bitwise_and(figure1_bw, figure2_bw),
-                            figure1_bw) < PERCENT_DIFF_THRESHOLD:
+        get_percent_diff(numpy.bitwise_and(figure1_bw, figure2_bw),
+                         figure1_bw) < PERCENT_DIFF_THRESHOLD:
         return percent_diff
     percent_diff = get_percent_diff(difference12, figure1_bw)
     if percent_diff < PERCENT_DIFF_THRESHOLD and \
-                    get_percent_diff(
-                            numpy.bitwise_and(figure1_bw, figure2_bw),
-                            figure2_bw) < PERCENT_DIFF_THRESHOLD:
+        get_percent_diff(numpy.bitwise_and(figure1_bw, figure2_bw),
+                         figure2_bw) < PERCENT_DIFF_THRESHOLD:
         return -percent_diff
 
     return 0
@@ -168,7 +168,8 @@ def find_difference(figure1, figure2):
 
     for i in xrange(rows):
         for j in xrange(columns):
-            difference_matrix[i][j] = abs(float(figure1[i][j]) - float(figure2[i][j]))
+            difference_matrix[i][j] = \
+                abs(float(figure1[i][j]) - float(figure2[i][j]))
     return difference_matrix
 
 
@@ -181,3 +182,51 @@ def get_pixel_ratio(figure1, figure2):
     sum1 = numpy.sum(figure1)
     sum2 = numpy.sum(figure2)
     return float(sum1) / sum2
+
+
+def verify_increasing_black_pixels(figure1, figure2):
+    sum1 = numpy.sum(figure1)
+    sum2 = numpy.sum(figure2)
+    return sum1 > sum2
+
+
+def get_translation_axis(figure1, figure2):
+    # Check for horizontal translation
+    rows = figure1.shape[0]
+    columns = figure1.shape[1]
+
+    figure1_horizontal = numpy.zeros((rows, columns), dtype=float)
+    for row_index, row in enumerate(figure1_horizontal):
+        for column_index in xrange(columns/2):
+            if column_index < columns/2:
+                row[column_index], row[column_index + columns/2] = \
+                    figure1[row_index][column_index + columns/2], \
+                    figure1[row_index][column_index]
+    if get_similarity_ratio(figure1_horizontal, figure2) > \
+            TRANSLATION_THRESHOLD:
+        return 'horizontal'
+
+    figure1_vertical = figure1[len(figure1)/2:] + figure1[:len(figure1)/2]
+    #pyplot.plot(figure1_translated)
+    if get_similarity_ratio(figure1_vertical, figure2) > \
+            TRANSLATION_THRESHOLD:
+        return 'vertical'
+    return False
+
+
+def get_translation(figure, axis):
+    if axis == 'vertical':
+        figure_vertical = figure[len(figure)/2:] + figure[:len(figure)/2]
+        return figure_vertical
+    else:
+        rows = figure.shape[0]
+        columns = figure.shape[1]
+
+        figure_horizontal = numpy.zeros((rows, columns), dtype=float)
+        for row_index, row in enumerate(figure_horizontal):
+            for column_index in xrange(columns/2):
+                if column_index < columns/2:
+                    row[column_index], row[column_index + columns/2] = \
+                        figure[row_index][column_index + columns/2], \
+                        figure[row_index][column_index]
+        return figure_horizontal
