@@ -325,6 +325,22 @@ class Agent:
                 return int(best_pixel_index)
         return -1
 
+    def check_pixel_ratio3x3_diag(self, image1, image2):
+        pixel_ratio12 = ImageHelper.get_pixel_ratio(image1, image2)
+        best_pixel_score_diff = None
+        best_pixel_index = -1
+        for index, (option, optionImage, binary_image) in \
+                self.options.iteritems():
+            pixel_ratio_diag = ImageHelper.get_pixel_ratio(image2, binary_image)
+            pixel_ratio_similarity = \
+                float(min(pixel_ratio_diag, pixel_ratio12)) / \
+                max(pixel_ratio12, pixel_ratio_diag)
+            # Pixel ratio should be as close to 1 as possible
+            if not best_pixel_score_diff or pixel_ratio_similarity > best_pixel_score_diff:
+                best_pixel_score_diff = pixel_ratio_similarity
+                best_pixel_index = index
+        return int(best_pixel_index)
+
     def check_increasing_black_pixels_rxc(self, image1, image2, image3, image4):
         if (ImageHelper.verify_increasing_black_pixels(image1, image2) and
                 ImageHelper.verify_increasing_black_pixels(image3, image4)):
@@ -500,12 +516,21 @@ class Agent:
         if pixel_ratio_index > AGENT_ANSWER_THRESHOLD:
             return pixel_ratio_index
 
+        #print 'Checking pixel ratio 3x3'
         pixel_ratio_index = self.check_pixel_ratio3x3(
             self.input_figures['A'][2],
             self.input_figures['B'][2],
             self.input_figures['C'][2],
             self.input_figures['G'][2],
             self.input_figures['H'][2]
+        )
+        if pixel_ratio_index > AGENT_ANSWER_THRESHOLD:
+            return pixel_ratio_index
+
+        #print 'Checking pixel ratio diag'
+        pixel_ratio_index = self.check_pixel_ratio3x3_diag(
+            self.input_figures['A'][2],
+            self.input_figures['E'][2],
         )
         if pixel_ratio_index > AGENT_ANSWER_THRESHOLD:
             return pixel_ratio_index
