@@ -7,19 +7,19 @@ PERCENT_DIFF_THRESHOLD = 3.25
 FILL_RATIO_DIFF_THRESHOLD = 0.25
 FILL_RATIO_DIFF_MIN_THRESHOLD = 0.05
 LOW_SIMILARITY_THRESHOLD = 0.95
-HIGH_SIMILARITY_THRESHOLD = 0.98
+HIGH_SIMILARITY_THRESHOLD = 0.97
 HIGH_SIMILARITY_THRESHOLD_3x3 = 0.90
 PIXEL_RATIO_THRESHOLD = 0.95
 TRANSLATION_THRESHOLD = 0.90
 
 
 def get_binary_image(image):
-        image_map = numpy.array(image, dtype=numpy.uint8)
+    image_map = numpy.array(image, dtype=numpy.uint8)
 
-        for i in xrange(image_map.shape[0]):
-            for j in xrange(image_map.shape[1]):
-                image_map[i][j] /= 255
-        return image_map
+    for i in xrange(image_map.shape[0]):
+        for j in xrange(image_map.shape[1]):
+            image_map[i][j] /= 255
+    return image_map
 
 
 # Assumes the two images are the same shape
@@ -230,3 +230,23 @@ def get_translation(figure, axis):
                         figure[row_index][column_index + columns/2], \
                         figure[row_index][column_index]
         return figure_horizontal
+
+
+def get_3_way_xor(images):
+    rows = images[0].shape[0]
+    columns = images[0].shape[1]
+
+    xor_matrix = numpy.zeros((rows, columns), dtype=float)
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if (images[0][i][j] == 0 and
+                images[1][i][j] == 0 and
+                images[2][i][j] == 0) or (
+                    images[0][i][j] == 1 and
+                    images[1][i][j] == 1 and
+                    images[2][i][j] == 1):
+                xor_matrix[i][j] = 0
+            else:
+                xor_matrix[i][j] = 1
+
+    return xor_matrix

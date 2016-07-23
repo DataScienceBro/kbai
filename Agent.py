@@ -280,6 +280,30 @@ class Agent:
                 return int(max_option_index)
         return -1
 
+    def check_unchangeddiag(self, image1, image2):
+        """
+        Verifies whether image1:image2 are similar or not
+        If so, returns image in options that is most similar to image2
+        Else return -1
+        """
+        if ImageHelper.get_similarity_ratio(
+            image1, image2
+        ) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
+            max_option_index = None
+            max_option_score = 0
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                option_score = ImageHelper.get_similarity_ratio(
+                    image2, binary_image
+                )
+                if not max_option_score or option_score > max_option_score:
+                    max_option_index = index
+                    max_option_score = option_score
+            if max_option_score > ImageHelper.HIGH_SIMILARITY_THRESHOLD_3x3:
+                return int(max_option_index)
+        return -1
+
+
     def check_pixel_ratio3x3(self, image1, image2, image3, image4, image5):
         pixel_ratio12 = ImageHelper.get_pixel_ratio(image1, image2)
         pixel_ratio23 = ImageHelper.get_pixel_ratio(image2, image3)
@@ -395,6 +419,39 @@ class Agent:
                 return int(best_translation_index)
         return -1
 
+    def check_3_way_xor(self, row1, row2, row3):
+        row1_result = ImageHelper.get_3_way_xor(row1)
+        row2_result = ImageHelper.get_3_way_xor(row2)
+
+        if ImageHelper.get_similarity_ratio(row1_result, row2_result) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
+            best_3_way_xor_score = None
+            best_3_way_xor_index = -1
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                row3_result = ImageHelper.get_3_way_xor(row3 + [binary_image])
+                option_score = ImageHelper.get_similarity_ratio(row3_result, row2_result)
+                if not best_3_way_xor_score or option_score > best_3_way_xor_score:
+                    best_3_way_xor_score = option_score
+                    best_3_way_xor_index = index
+            if best_3_way_xor_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(best_3_way_xor_index)
+        return -1
+
+    def eliminate_options_in_question(self):
+        possible_options = ['1', '2', '3', '4', '5', '6', '7', '8']
+        possible_inputs = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+        for index, (option, optionImage, binary_image) in \
+                self.options.iteritems():
+            for letter in possible_inputs:
+                if ImageHelper.get_similarity_ratio(binary_image, self.input_figures[letter][2]) > ImageHelper.HIGH_SIMILARITY_THRESHOLD:
+                    possible_options.remove(index)
+                    possible_inputs.remove(letter)
+                    break
+            #if binary_image in self.input_figures:
+            #    possible_options.remove(index)
+        if len(possible_options) == 1:
+            return int(possible_options[0])
+
     def solve3x3(self):
 
         # Check for any row or column being unchanged
@@ -475,6 +532,16 @@ class Agent:
         if pixels_increasing_index > AGENT_ANSWER_THRESHOLD:
             return pixels_increasing_index
 
+        pixels_increasing_index = self.check_increasing_black_pixels(
+            self.input_figures['A'][2],
+            self.input_figures['D'][2],
+            self.input_figures['G'][2],
+            self.input_figures['C'][2],
+            self.input_figures['H'][2]
+        )
+        if pixels_increasing_index > AGENT_ANSWER_THRESHOLD:
+            return pixels_increasing_index
+
         # Check for translation
         #print 'Checking for translation'
         translation_index = self.check_translation(
@@ -537,6 +604,85 @@ class Agent:
 
         return -1
 
+    def solve3x3D(self):
+        # Check for any row or column being unchanged
+        #print 'Checking unchanged'
+        unchanged_horizontal_index = self.check_unchanged3x3(
+            self.input_figures['A'][2],
+            self.input_figures['B'][2],
+            self.input_figures['C'][2],
+            self.input_figures['H'][2]
+        )
+        if unchanged_horizontal_index > AGENT_ANSWER_THRESHOLD:
+            return unchanged_horizontal_index
+
+        unchanged_horizontal_index = self.check_unchanged3x3(
+            self.input_figures['D'][2],
+            self.input_figures['E'][2],
+            self.input_figures['F'][2],
+            self.input_figures['H'][2]
+        )
+        if unchanged_horizontal_index > AGENT_ANSWER_THRESHOLD:
+            return unchanged_horizontal_index
+
+        unchanged_diagonal_index = self.check_unchangeddiag(
+            self.input_figures['A'][2],
+            self.input_figures['E'][2]
+        )
+        if unchanged_diagonal_index > AGENT_ANSWER_THRESHOLD:
+            return unchanged_diagonal_index
+
+        # Check for 3 way XOR
+        xor_index = self.check_3_way_xor(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]]
+        )
+        if xor_index > AGENT_ANSWER_THRESHOLD:
+            return xor_index
+
+        # Check for 3 way XOR, but with diagonals
+        xor_index = self.check_3_way_xor(
+            [self.input_figures['B'][2],
+             self.input_figures['F'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['C'][2],
+             self.input_figures['D'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['A'][2],
+             self.input_figures['E'][2]]
+        )
+        if xor_index > AGENT_ANSWER_THRESHOLD:
+            #print 'got the answer'
+            return xor_index
+
+        # Check for 3 way XOR, but with diagonals
+        xor_index = self.check_3_way_xor(
+            [self.input_figures['C'][2],
+             self.input_figures['E'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['A'][2],
+             self.input_figures['F'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['B'][2],
+             self.input_figures['D'][2]]
+        )
+        if xor_index > AGENT_ANSWER_THRESHOLD:
+            #print 'got the answer'
+            return xor_index
+
+        # If an option is an image in the question, we might be able to discard
+        # it
+        elimination_index = self.eliminate_options_in_question()
+        if elimination_index > AGENT_ANSWER_THRESHOLD:
+            return elimination_index
+        return -1
+
     # The primary method for solving incoming Raven's Progressive Matrices.
     # For each problem, your Agent's Solve() method will be called. At the
     # conclusion of Solve(), your Agent should return an int representing its
@@ -553,6 +699,9 @@ class Agent:
 
         if problem.problemType == '2x2':
             answer = self.solve2x2()
+        elif 'Problems D' in problem.problemSetName \
+                or 'Problems E' in problem.problemSetName:
+            answer = self.solve3x3D()
         else:
             answer = self.solve3x3()
         print problem.name, answer
