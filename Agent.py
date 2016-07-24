@@ -452,6 +452,85 @@ class Agent:
         if len(possible_options) == 1:
             return int(possible_options[0])
 
+    def check_row_or(self, row1, row2, row3):
+        if ImageHelper.check_or(row1[0], row1[1], row1[2]) or ImageHelper.check_or(row2[0], row2[1], row2[2]):
+            # Find best option for row3
+            best_or_score = None
+            best_or_index = -1
+            or_matrix = ImageHelper.get_or(row3[0], row3[1])
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                option_score = ImageHelper.get_similarity_ratio(binary_image, or_matrix)
+                if not best_or_score or option_score > best_or_score:
+                    best_or_score = option_score
+                    best_or_index = index
+            if best_or_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(best_or_index)
+        return -1
+
+    def check_pixel_difference(self, row1, row2, row3):
+        if ImageHelper.check_pixel_difference(row1[0], row1[1], row1[2]) and ImageHelper.check_pixel_difference(row2[0], row2[1], row2[2]):
+            best_pixel_diff_score = None
+            best_pixel_diff_index = -1
+            pixel_diff = ImageHelper.get_pixel_difference(row3[0], row3[1])
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                option_pixels = (binary_image.shape[0] * binary_image.shape[1]) - numpy.sum(binary_image)
+                smaller, bigger = (pixel_diff, option_pixels) if option_pixels > pixel_diff else (option_pixels, pixel_diff)
+                option_score = 1 - (float(bigger - smaller) / bigger)
+                if not best_pixel_diff_score or option_score >= best_pixel_diff_score:
+                    best_pixel_diff_score = option_score
+                    best_pixel_diff_index = index
+            if best_pixel_diff_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(best_pixel_diff_index)
+        return -1
+
+    def check_row_and(self, row1, row2, row3):
+        if ImageHelper.check_and(row1[0], row1[1], row1[2]) and ImageHelper.check_and(row2[0], row2[1], row2[2]):
+            # Find best option for row3
+            best_and_score = None
+            best_and_index = -1
+            and_matrix = ImageHelper.get_and(row3[0], row3[1])
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                option_score = ImageHelper.get_similarity_ratio(binary_image, and_matrix)
+                if not best_and_score or option_score > best_and_score:
+                    best_and_score = option_score
+                    best_and_index = index
+            if best_and_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(best_and_index)
+        return -1
+
+    def check_xor(self, row1, row2, row3):
+        if ImageHelper.check_xor(row1[0], row1[1], row1[2]) and ImageHelper.check_xor(row2[0], row2[1], row2[2]):
+            best_xor_score = None
+            best_xor_index = -1
+            xor_matrix = ImageHelper.get_xor(row3[0], row3[1])
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                option_score = ImageHelper.get_similarity_ratio(binary_image, xor_matrix)
+                if not best_xor_score or option_score > best_xor_score:
+                    best_xor_score = option_score
+                    best_xor_index = index
+            if best_xor_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(best_xor_index)
+        return -1
+
+    def check_top_bottom(self, row1, row2, row3):
+        if ImageHelper.check_top_bottom_row(row1[0], row1[1], row1[2]) and ImageHelper.check_top_bottom_row(row2[0], row2[1], row2[2]):
+            best_top_bottom_score = None
+            best_top_bottom_index = -1
+            top_bottom_matrix = ImageHelper.get_top_bottom(row3[0], row3[1])
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                option_score = ImageHelper.get_similarity_ratio(binary_image, top_bottom_matrix)
+                if not best_top_bottom_score or option_score > best_top_bottom_score:
+                    best_top_bottom_score = option_score
+                    best_top_bottom_index = index
+            if best_top_bottom_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                return int(best_top_bottom_index)
+        return -1
+
     def solve3x3(self):
 
         # Check for any row or column being unchanged
@@ -606,7 +685,6 @@ class Agent:
 
     def solve3x3D(self):
         # Check for any row or column being unchanged
-        #print 'Checking unchanged'
         unchanged_horizontal_index = self.check_unchanged3x3(
             self.input_figures['A'][2],
             self.input_figures['B'][2],
@@ -614,6 +692,7 @@ class Agent:
             self.input_figures['H'][2]
         )
         if unchanged_horizontal_index > AGENT_ANSWER_THRESHOLD:
+            #print 'Items on each row are equal'
             return unchanged_horizontal_index
 
         unchanged_horizontal_index = self.check_unchanged3x3(
@@ -623,6 +702,7 @@ class Agent:
             self.input_figures['H'][2]
         )
         if unchanged_horizontal_index > AGENT_ANSWER_THRESHOLD:
+            #print 'Items on each row are equal'
             return unchanged_horizontal_index
 
         unchanged_diagonal_index = self.check_unchangeddiag(
@@ -630,9 +710,11 @@ class Agent:
             self.input_figures['E'][2]
         )
         if unchanged_diagonal_index > AGENT_ANSWER_THRESHOLD:
+            #print 'Items on diagonal are equal'
             return unchanged_diagonal_index
 
         # Check for 3 way XOR
+        #print 'Checking 3 way XOR'
         xor_index = self.check_3_way_xor(
             [self.input_figures['A'][2],
              self.input_figures['B'][2],
@@ -644,6 +726,7 @@ class Agent:
              self.input_figures['H'][2]]
         )
         if xor_index > AGENT_ANSWER_THRESHOLD:
+            #print 'Ternary XOR on each row is same'
             return xor_index
 
         # Check for 3 way XOR, but with diagonals
@@ -658,10 +741,10 @@ class Agent:
              self.input_figures['E'][2]]
         )
         if xor_index > AGENT_ANSWER_THRESHOLD:
-            #print 'got the answer'
+            #print 'Ternary XOR on diagonals is same'
             return xor_index
 
-        # Check for 3 way XOR, but with diagonals
+        # Check for 3 way XOR, but with diagonals (other side)
         xor_index = self.check_3_way_xor(
             [self.input_figures['C'][2],
              self.input_figures['E'][2],
@@ -673,14 +756,147 @@ class Agent:
              self.input_figures['D'][2]]
         )
         if xor_index > AGENT_ANSWER_THRESHOLD:
-            #print 'got the answer'
+            #print 'Ternary XOR on other diagonals is same'
             return xor_index
 
         # If an option is an image in the question, we might be able to discard
         # it
         elimination_index = self.eliminate_options_in_question()
         if elimination_index > AGENT_ANSWER_THRESHOLD:
+            #print 'Process of elimination worked'
             return elimination_index
+        return -1
+
+    def solve3x3E(self):
+
+        # Check if pixels(A) - pixels(B) = pixels(C)
+        pixel_difference_index = self.check_pixel_difference(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]]
+        )
+        if pixel_difference_index > AGENT_ANSWER_THRESHOLD:
+            #print '784'
+            return pixel_difference_index
+
+        top_bottom_index = self.check_top_bottom(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]]
+        )
+        if top_bottom_index > AGENT_ANSWER_THRESHOLD:
+            #print '813'
+            return top_bottom_index
+
+        # Check if A or B == C and D or E == F
+        row_or_index = self.check_row_or(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]])
+        if row_or_index > AGENT_ANSWER_THRESHOLD:
+            #print '798'
+            return row_or_index
+
+        # Check if top of first + bottom of second == third
+
+        top_bottom_index = self.check_top_bottom(
+            [self.input_figures['B'][2],
+             self.input_figures['A'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['E'][2],
+             self.input_figures['D'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['H'][2],
+             self.input_figures['G'][2]]
+        )
+        if top_bottom_index > AGENT_ANSWER_THRESHOLD:
+            #print '827'
+            return top_bottom_index
+
+        top_bottom_index = self.check_top_bottom(
+            [self.input_figures['A'][2],
+             self.input_figures['D'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['B'][2],
+             self.input_figures['E'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['C'][2],
+             self.input_figures['F'][2]]
+        )
+        if top_bottom_index > AGENT_ANSWER_THRESHOLD:
+            #print '841'
+            return top_bottom_index
+
+        top_bottom_index = self.check_top_bottom(
+            [self.input_figures['D'][2],
+             self.input_figures['A'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['E'][2],
+             self.input_figures['B'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['F'][2],
+             self.input_figures['C'][2]]
+        )
+        if top_bottom_index > AGENT_ANSWER_THRESHOLD:
+            #print '855'
+            return top_bottom_index
+
+        # Check if A and B == C and D and E == F
+        row_and_index = self.check_row_and(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]])
+        if row_and_index > AGENT_ANSWER_THRESHOLD:
+            #print '869'
+            return row_and_index
+
+        # Check if xor of first two elements == last element
+        xor_index = self.check_xor(
+            [self.input_figures['A'][2],
+             self.input_figures['D'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['B'][2],
+             self.input_figures['E'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['C'][2],
+             self.input_figures['F'][2]])
+        if xor_index > AGENT_ANSWER_THRESHOLD:
+            #print '883'
+            return xor_index
+
+        xor_index = self.check_xor(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]])
+        if xor_index > AGENT_ANSWER_THRESHOLD:
+            #print '896'
+            return xor_index
+
         return -1
 
     # The primary method for solving incoming Raven's Progressive Matrices.
@@ -699,9 +915,10 @@ class Agent:
 
         if problem.problemType == '2x2':
             answer = self.solve2x2()
-        elif 'Problems D' in problem.problemSetName \
-                or 'Problems E' in problem.problemSetName:
+        elif 'Problems D' in problem.problemSetName:
             answer = self.solve3x3D()
+        elif 'Problems E' in problem.problemSetName:
+            answer = self.solve3x3E()
         else:
             answer = self.solve3x3()
         print problem.name, answer

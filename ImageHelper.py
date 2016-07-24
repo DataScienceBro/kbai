@@ -8,7 +8,10 @@ FILL_RATIO_DIFF_THRESHOLD = 0.25
 FILL_RATIO_DIFF_MIN_THRESHOLD = 0.05
 LOW_SIMILARITY_THRESHOLD = 0.95
 HIGH_SIMILARITY_THRESHOLD = 0.97
-HIGH_SIMILARITY_THRESHOLD_3x3 = 0.90
+HIGH_SIMILARITY_THRESHOLD_3x3 = 0.91
+HIGH_SIMILARITY_THRESHOLD_OR = 0.96
+HIGH_SIMILARITY_THRESHOLD_XOR = 0.965
+HIGH_SIMILARITY_THRESHOLD_TOP_BOTTOM = 0.966
 PIXEL_RATIO_THRESHOLD = 0.95
 TRANSLATION_THRESHOLD = 0.90
 
@@ -250,3 +253,100 @@ def get_3_way_xor(images):
                 xor_matrix[i][j] = 1
 
     return xor_matrix
+
+
+def get_or(image1, image2):
+    rows = image1.shape[0]
+    columns = image1.shape[1]
+
+    or_matrix = numpy.zeros((rows, columns), dtype=float)
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if image1[i][j] == 1 and image2[i][j] == 1:
+                or_matrix[i][j] = 1
+    return or_matrix
+
+
+def check_or(image1, image2, image3):
+    or_matrix = get_or(image1, image2)
+    if get_similarity_ratio(or_matrix, image3) > HIGH_SIMILARITY_THRESHOLD_OR:
+        return True
+    return False
+
+
+def get_and(image1, image2):
+    rows = image1.shape[0]
+    columns = image1.shape[1]
+
+    and_matrix = numpy.zeros((rows, columns), dtype=float)
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if image1[i][j] == 1 or image2[i][j] == 1:
+                and_matrix[i][j] = 1
+    return and_matrix
+
+
+def check_and(image1, image2, image3):
+    and_matrix = get_and(image1, image2)
+    if get_similarity_ratio(and_matrix, image3) > HIGH_SIMILARITY_THRESHOLD_3x3:
+        return True
+    return False
+
+
+def get_xor(image1, image2):
+    rows = image1.shape[0]
+    columns = image1.shape[1]
+
+    xor_matrix = numpy.zeros((rows, columns), dtype=float)
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if (image1[i][j] == 1 and image2[i][j] == 1) or \
+                    (image1[i][j] == 0 and image2[i][j] == 0):
+                xor_matrix[i][j] = 1
+            else:
+                xor_matrix[i][j] = 0
+    return xor_matrix
+
+
+def check_xor(image1, image2, image3):
+    xor_matrix = get_xor(image1, image2)
+    if get_similarity_ratio(xor_matrix, image3) > HIGH_SIMILARITY_THRESHOLD_XOR:
+        return True
+    return False
+
+
+def get_top_bottom(image1, image2):
+    rows = image1.shape[0]
+    columns = image1.shape[1]
+
+    top_bottom_matrix = numpy.zeros((rows, columns), dtype=float)
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if i <= rows/2:
+                top_bottom_matrix[i][j] = image1[i][j]
+            else:
+                top_bottom_matrix[i][j] = image2[i][j]
+
+    return top_bottom_matrix
+
+
+def check_top_bottom_row(image1, image2, image3):
+    top_bottom_matrix = get_top_bottom(image1, image2)
+    if get_similarity_ratio(top_bottom_matrix, image3) > HIGH_SIMILARITY_THRESHOLD_TOP_BOTTOM:
+        return True
+    return False
+
+
+def get_pixel_difference(image1, image2):
+    pixels1 = (image1.shape[0] * image1.shape[1]) - int(numpy.sum(image1))
+    pixels2 = (image2.shape[0] * image2.shape[1]) - int(numpy.sum(image2))
+    return abs(pixels1 - pixels2)
+
+
+def check_pixel_difference(image1, image2, image3):
+    image3_pixels = (image3.shape[0] * image3.shape[1]) - int(numpy.sum(image3))
+    image1_2_pixels = get_pixel_difference(image1, image2)
+    smaller, bigger = (image1_2_pixels, image3_pixels) if \
+        image3_pixels > image1_2_pixels else (image3_pixels, image1_2_pixels)
+    if 1 - (float(bigger - smaller) / bigger) > HIGH_SIMILARITY_THRESHOLD:
+        return True
