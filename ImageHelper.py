@@ -255,6 +255,61 @@ def get_3_way_xor(images):
     return xor_matrix
 
 
+def get_pixel_count(image):
+    rows = image.shape[0]
+    columns = image.shape[1]
+
+    visited = numpy.zeros((rows, columns), dtype=float)
+    original_sum = numpy.sum(visited)
+
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if image[i][j] == 0 and visited[i][j] == 0:
+                depth_first_search(image, i, j, visited)
+                return abs(original_sum - numpy.sum(visited))
+    return -1
+
+
+def is_safe(image, i, j, visited):
+    return i >= 0 and i < image.shape[0] \
+        and j >= 0 and j < image.shape[1] \
+        and image[i][j] == 0 and visited[i][j] == 0
+
+
+def depth_first_search(image, i, j, visited):
+    row_numbers = [-1, -1, -1, 0, 0, 1, 1, 1]
+    column_numbers = [-1, 0, 1, -1, 1, -1, 0, 1]
+
+    visited[i][j] = 1
+    for k in xrange(len(row_numbers)):
+        if is_safe(image, i + row_numbers[k], j + column_numbers[k], visited):
+            depth_first_search(
+                image, i + row_numbers[k], j + column_numbers[k], visited)
+
+
+def get_islands(image):
+    rows = image.shape[0]
+    columns = image.shape[1]
+
+    visited = numpy.zeros((rows, columns), dtype=float)
+    count = 0
+
+    for i in xrange(rows):
+        for j in xrange(columns):
+            if image[i][j] == 0 and visited[i][j] == 0:
+                depth_first_search(image, i, j, visited)
+                count += 1
+    return count
+
+
+def check_row_count(image1, image2, image3):
+    num_islands = [get_islands(image1), get_islands(image2) , get_islands(image3)]
+    num_islands.sort()
+    if abs(num_islands[0] - num_islands[1]) == abs(num_islands[1] - num_islands[2]):
+        return abs(num_islands[0] - num_islands[1])
+    return -1
+
+
 def get_or(image1, image2):
     rows = image1.shape[0]
     columns = image1.shape[1]

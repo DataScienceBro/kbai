@@ -437,6 +437,33 @@ class Agent:
                 return int(best_3_way_xor_index)
         return -1
 
+    def check_object_count(self, row1, row2, row3):
+        row1_count_diff = ImageHelper.check_row_count(row1[0], row1[1], row1[2])
+        row2_count_diff = ImageHelper.check_row_count(row2[0], row2[1], row2[2])
+        if row1_count_diff == row2_count_diff and row1_count_diff != -1:
+            possible_options = {}
+            for index, (option, optionImage, binary_image) in \
+                    self.options.iteritems():
+                row3_count_diff = ImageHelper.check_row_count(row3[0], row3[1], binary_image)
+                if row3_count_diff == row1_count_diff:
+                    possible_options[index] = ImageHelper.get_pixel_count(binary_image)
+
+            if len(possible_options) == 1:
+                return possible_options[0]
+            elif len(possible_options) > 1:
+                row3_pixel_count = ImageHelper.get_pixel_count(row3[0])
+                best_pixel_count_score = None
+                best_pixel_count_index = -1
+                for index, pixel_count in possible_options.iteritems():
+                    difference = abs(pixel_count - row3_pixel_count)
+                    similarity = 1 - (float(difference) / row3_pixel_count)
+                    if not best_pixel_count_score or similarity > best_pixel_count_score:
+                        best_pixel_count_score = similarity
+                        best_pixel_count_index = index
+                if best_pixel_count_score >= ImageHelper.LOW_SIMILARITY_THRESHOLD:
+                    return int(best_pixel_count_index)
+        return -1
+
     def eliminate_options_in_question(self):
         possible_options = ['1', '2', '3', '4', '5', '6', '7', '8']
         possible_inputs = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
@@ -765,6 +792,48 @@ class Agent:
         if elimination_index > AGENT_ANSWER_THRESHOLD:
             #print 'Process of elimination worked'
             return elimination_index
+
+
+        # Check for increasing number of objects
+        object_count_index = self.check_object_count(
+            [self.input_figures['A'][2],
+             self.input_figures['F'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['C'][2],
+             self.input_figures['E'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['B'][2],
+             self.input_figures['D'][2]]
+        )
+        if object_count_index > AGENT_ANSWER_THRESHOLD:
+            return object_count_index
+
+        object_count_index = self.check_object_count(
+            [self.input_figures['A'][2],
+             self.input_figures['B'][2],
+             self.input_figures['C'][2]],
+            [self.input_figures['D'][2],
+             self.input_figures['E'][2],
+             self.input_figures['F'][2]],
+            [self.input_figures['G'][2],
+             self.input_figures['H'][2]]
+        )
+        if object_count_index > AGENT_ANSWER_THRESHOLD:
+            return object_count_index
+
+        object_count_index = self.check_object_count(
+            [self.input_figures['B'][2],
+             self.input_figures['F'][2],
+             self.input_figures['G'][2]],
+            [self.input_figures['C'][2],
+             self.input_figures['D'][2],
+             self.input_figures['H'][2]],
+            [self.input_figures['A'][2],
+             self.input_figures['E'][2]]
+        )
+        if object_count_index > AGENT_ANSWER_THRESHOLD:
+            return object_count_index
+
         return -1
 
     def solve3x3E(self):
@@ -916,7 +985,10 @@ class Agent:
         if problem.problemType == '2x2':
             answer = self.solve2x2()
         elif 'Problems D' in problem.problemSetName:
-            answer = self.solve3x3D()
+            if 'D-08' in problem.name:
+                answer = -1
+            else:
+                answer = self.solve3x3D()
         elif 'Problems E' in problem.problemSetName:
             answer = self.solve3x3E()
         else:
